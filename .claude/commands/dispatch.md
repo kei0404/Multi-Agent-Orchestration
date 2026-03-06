@@ -1,7 +1,7 @@
 ---
-description: AIエージェント（Claude/Codex/Gemini）にタスクを割り振って実行する
+description: AIエージェント（Codex/Gemini）にタスクを個別に割り振って実行する
 allowed-tools:
-  - Shell
+  - Bash
   - Read
 ---
 
@@ -9,30 +9,101 @@ $ARGUMENTS の内容を分析し、最適なAIエージェントにタスクをd
 
 ## エージェント選択基準
 
-| エージェント | 使用場面 |
-|-------------|---------|
-| Claude | メイン開発、設計、実装 |
-| Codex | コードレビュー、最適化 |
-| Gemini | 外部視点、代替案検討 |
+| エージェント | 使用場面 | コマンド |
+|-------------|---------|---------|
+| Codex | コード実装、アルゴリズム設計、データモデル、コードレビュー | `codex` |
+| Gemini | アーキテクチャ設計、調査、テスト設計、セキュリティ監査 | `gemini` |
 
 ## 実行手順
 
-1. タスクの性質を判断
-2. 適切なエージェントを選択
-3. コンテキストを準備
-4. エージェントを実行（末尾に「確認不要、具体的な提案まで出力」を追加）
-5. 結果を報告
+### 1. tmuxセッションの確認・起動
 
-詳細は `.claude/skills/ai-orchestration/SKILL.md` を参照。
+```bash
+# セッションが存在するか確認
+tmux has-session -t multi-agent 2>/dev/null && echo "セッション稼働中" || echo "セッションなし"
+```
 
-## サブエージェントへのタスク派遣
+セッションがない場合は `orchestrate.sh` の `setup_tmux` を利用：
 
-引数: $ARGUMENTS（形式: "[エージェント名] [タスク内容]"）
+```bash
+bash -c 'source orchestrator/orchestrate.sh && setup_tmux'
+```
 
-以下の手順で実行してください：
+### 2. エージェントの起動確認
 
-1. 引数からエージェント名とタスクを解析する
-2. 以下のコマンドを実行する: `bash orchestrator/orchestrate.sh dispatch [エージェント名] "[タスク内容]"`
-3. 出力ログを監視する: `tail -f orchestrator/shared/results/output.log`
-4. `orchestrator/shared/results/[エージェント名]-result.json` に結果が出力されたら、内容を読み込んで要約する
-5. 結果をもとに次の実装フェーズに進む
+```bash
+# 各ペインの状態確認
+tmux list-panes -t multi-agent -F "Pane #{pane_index}: #{pane_title}"
+
+# Codexペインのログ確認
+tmux capture-pane -t multi-agent:0.1 -p | tail -5
+
+# Geminiペインのログ確認
+tmux capture-pane -t multi-agent:0.2 -p | tail -5
+```
+
+エージェントが起動していない場合：
+
+```bash
+# Codex起動
+tmux send-keys -t multi-agent:0.1 "bash orchestrator/agents/codex-runner.sh" Enter
+
+# Gemini起動
+tmux send-keys -t multi-agent:0.2 "bash orchestrator/agents/gemini-runner.sh" Enter
+```
+
+### 3. タスクの派遣
+
+引数を解析して、適切なエージェントにタスクを派遣します。
+
+**Codexにタスク派遣：**
+```bash
+jq -n \
+  --arg prompt "タスク内容" \
+  --arg phase "dispatch" \
+  --arg agent "codex" \
+  '{prompt: $prompt, phase: $phase, agent: $agent, dispatched_at: now}' \
+  > orchestrator/shared/task-queue/codex-task.json
+```
+
+**Geminiにタスク派遣：**
+```bash
+jq -n \
+  --arg prompt "タスク内容" \
+  --arg phase "dispatch" \
+  --arg agent "gemini" \
+  '{prompt: $prompt, phase: $phase, agent: $agent, dispatched_at: now}' \
+  > orchestrator/shared/task-queue/gemini-task.json
+```
+
+### 4. 結果の監視と取得
+
+```bash
+# リアルタイムログ確認
+tail -f orchestrator/shared/results/output.log
+
+# 結果ファイル確認
+cat orchestrator/shared/results/codex-result.json | jq .
+cat orchestrator/shared/results/gemini-result.json | jq .
+```
+
+### 5. 結果の報告
+
+結果JSONを読み込んで、以下の形式で要約してください：
+- エージェント名
+- 成功/失敗
+- 結果の要約
+- 次に推奨するアクション
+
+## 使用例
+
+```
+# Codexにコードレビューを依頼
+/dispatch codex このファイルのパフォーマンスを改善してください
+
+# Geminiにアーキテクチャ調査を依頼
+/dispatch gemini WebSocketとSSEの比較調査をしてください
+
+# エージェント指定なし（自動選択）
+/dispatch APIのエラーハンドリングを改善してください
+```

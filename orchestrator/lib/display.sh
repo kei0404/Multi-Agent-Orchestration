@@ -16,6 +16,3 @@ update_pane_status() {
     esac
 }
 
-# 使用例
-update_pane_status 1 "Codex: Running Phase 2" yellow
-update_pane_status 2 "Gemini: Waiting..."     green

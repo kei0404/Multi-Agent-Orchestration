@@ -86,6 +86,31 @@ Claude ┼→ Gemini (セキュリティ分析)
 2. 矛盾点を特定・解決
 3. 最終的な成果物を生成
 
+## tmux ペイン構成と自動起動
+
+`bash orchestrator/orchestrate.sh "$ARGUMENTS"` を実行すると：
+
+1. **tmux セッション自動起動**  
+   Codex と Gemini 用にターミナルが分割され、各エージェント用に専用ペインが作成されます。
+
+2. **ペイン構成**  
+   - Pane 0: 🤖 Claude Code (Orchestrator)  
+   - Pane 1: ⚡ Codex Agent（Codex 専用ペイン）  
+   - Pane 2: ✨ Gemini Agent（Gemini 専用ペイン）  
+   - Pane 3: 📊 Output Log（統合ログ）
+
+3. **自動起動**  
+   Codex と Gemini 用にそれぞれ専用ペインが作成されると、各エージェントが自動で起動し、タスク待機状態になります。
+
+4. **実行結果の表示**  
+   各エージェントの実行結果は、そのエージェントのペインに直接表示されます。  
+   - Codex の出力 → Pane 1: ⚡ Codex Agent  
+   - Gemini の出力 → Pane 2: ✨ Gemini Agent  
+   出力はフェーズごとに順次表示され、リアルタイムで確認できます。
+
+5. **tmux への自動アタッチ**  
+   実行後、tmux セッションに自動アタッチされ、上記のペイン構成をそのまま確認できます。デタッチは `Ctrl+B` → `D` です。
+
 ## エージェント呼び出し例
 
 ### Codexでコードレビュー

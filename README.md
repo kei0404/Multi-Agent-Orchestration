@@ -172,6 +172,16 @@ cat orchestrator/shared/results/merged-phase2.json | jq .
 cat orchestrator/shared/results/merged-phase3.json | jq .
 ```
 
+### Hello World サンプルアプリ
+
+`apps/hello_world` にはエージェントの Phase 2 で使用できるシンプルなサンプル機能を用意しています。
+
+```bash
+python -m apps.hello_world.cli --target "world" --locale en
+```
+
+実行すると JSON 形式で `{"message": "Hello world", ...}` を返すため、`codex-runner.sh` や `gemini-runner.sh` がそのまま結果を取り込めます。
+
 ### 4. セッション操作
 
 ```bash

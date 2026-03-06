@@ -3,6 +3,12 @@
 # Gemini エージェントラッパー
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+set -a
+source "$SCRIPT_DIR/../../.env"
+[ -f "$SCRIPT_DIR/../../.gemini/.env" ] && source "$SCRIPT_DIR/../../.gemini/.env"
+set +a
+
 SHARED_DIR="$SCRIPT_DIR/../shared"
 TASK_FILE="$SHARED_DIR/task-queue/gemini-task.json"
 RESULT_FILE="$SHARED_DIR/results/gemini-result.json"
@@ -24,11 +30,14 @@ while true; do
         rm "$TASK_FILE"
         
         log "⚙️  Gemini 実行中..."
-        RESULT=$(gemini \
-            --model gemini-2.5-pro \
+        tmp_out="/tmp/gemini-result-$$.txt"
+        gemini \
+            --model "${GEMINI_MODEL:-gemini-2.5-pro}" \
             --yolo \
-            --prompt "$PROMPT" 2>&1)
-        EXIT_CODE=$?
+            --prompt "$PROMPT" 2>&1 | tee "$tmp_out"
+        EXIT_CODE=${PIPESTATUS[0]}
+        RESULT=$(cat "$tmp_out")
+        rm -f "$tmp_out"
         
         jq -n \
             --arg agent "gemini" \
@@ -39,8 +48,8 @@ while true; do
             > "$RESULT_FILE"
         
         log "✅ 完了 - 結果を保存: $RESULT_FILE"
-        echo "--- Gemini Result ---" | tee -a "$LOG_FILE"
-        echo "$RESULT" | tee -a "$LOG_FILE"
+        echo "" | tee -a "$LOG_FILE"
+        echo "--- Gemini Result (Phase: $PHASE) ---" | tee -a "$LOG_FILE"
         echo "--------------------" | tee -a "$LOG_FILE"
     fi
     sleep 2
