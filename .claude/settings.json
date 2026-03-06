@@ -1,0 +1,14 @@
+// プロジェクトローカル設定
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash orchestrator/**:*)",
+      "Bash(tmux send-keys:*)",
+      "Bash(tail:*)",
+      "Bash(jq:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
